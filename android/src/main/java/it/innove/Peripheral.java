@@ -70,6 +70,7 @@ public class Peripheral extends BluetoothGattCallback {
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
 	private Runnable discoverServicesRunnable;
 	private boolean commandQueueBusy = false;
+	private Handler handler;
 
 	private List<byte[]> writeQueue = new ArrayList<>();
 
@@ -106,23 +107,25 @@ public class Peripheral extends BluetoothGattCallback {
 			BluetoothDevice device = getDevice();
 			this.connectCallback = callback;
 			this.connecting = true;
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-				Log.d(BleManager.LOG_TAG, " Is Or Greater than M $mBluetoothDevice");
-				gatt = device.connectGatt(activity, false, this, BluetoothDevice.TRANSPORT_LE);
+			Handler handler = new Handler(Looper.getMainLooper());
+			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
+				Log.d(BleManager.LOG_TAG, "connectGatt(activity, false, this, BluetoothDevice.TRANSPORT_LE, PhyRequest.PHY_LE_1M_MASK | PhyRequest.PHY_LE_2M_MASK | PhyRequest.PHY_LE_CODED_MASK, handler)");
+				gatt = device.connectGatt(activity, false, this,
+						BluetoothDevice.TRANSPORT_LE, 1 | 1 << 1 | 1 << 2, handler);
+			} else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O) {
+				// A variant of connectGatt with Handled can't be used here.
+				// Check https://github.com/NordicSemiconductor/Android-BLE-Library/issues/54
+				// This bug specifically occurs in SDK 26 and is fixed in SDK 27
+				Log.d(BleManager.LOG_TAG, "connectGatt(activity, false, this, BluetoothDevice.TRANSPORT_LE, PhyRequest.PHY_LE_1M_MASK | PhyRequest.PHY_LE_2M_MASK | PhyRequest.PHY_LE_CODED_MASK)");
+				gatt = device.connectGatt(activity, false, this,
+						BluetoothDevice.TRANSPORT_LE, 1 | 1 << 1 | 1 << 2/*, handler*/);
+			} else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				Log.d(BleManager.LOG_TAG, "connectGatt(activity, false, this, BluetoothDevice.TRANSPORT_LE)");
+				gatt = device.connectGatt(activity, false, this,
+						BluetoothDevice.TRANSPORT_LE);
 			} else {
-				Log.d(BleManager.LOG_TAG, " Less than M");
-				try {
-					Log.d(BleManager.LOG_TAG, " Trying TRANPORT LE with reflection");
-					Method m = device.getClass().getDeclaredMethod("connectGatt", Context.class, Boolean.class,
-							BluetoothGattCallback.class, Integer.class);
-					m.setAccessible(true);
-					Integer transport = device.getClass().getDeclaredField("TRANSPORT_LE").getInt(null);
-					gatt = (BluetoothGatt) m.invoke(device, activity, false, this, transport);
-				} catch (Exception e) {
-					e.printStackTrace();
-					Log.d(TAG, " Catch to call normal connection");
-					gatt = device.connectGatt(activity, false, this);
-				}
+				Log.d(BleManager.LOG_TAG, "connectGatt(activity, false, this)");
+				gatt = device.connectGatt(activity, false, this);
 			}
 		} else {
 			if (gatt != null) {
@@ -520,7 +523,7 @@ public class Peripheral extends BluetoothGattCallback {
 		final BluetoothGattCharacteristic characteristic = findNotifyCharacteristic(service, characteristicUUID);
 
 		if (characteristic == null) {
-			callback.invoke("Characteristic " + characteristicUUID + " not found");			
+			callback.invoke("Characteristic " + characteristicUUID + " not found");
 			return;
 		}
 
@@ -600,7 +603,7 @@ public class Peripheral extends BluetoothGattCallback {
 		Log.d(BleManager.LOG_TAG, "removeNotify");
 		String bufferKey = this.bufferedCharacteristicsKey(serviceUUID.toString(), characteristicUUID.toString());
 		if (this.bufferedCharacteristics.containsKey(bufferKey)) {
-			NotifyBufferContainer buffer = this.bufferedCharacteristics.get(bufferKey);	
+			NotifyBufferContainer buffer = this.bufferedCharacteristics.get(bufferKey);
 			this.bufferedCharacteristics.remove(bufferKey);
 		}
 		this.setNotify(serviceUUID, characteristicUUID, false, callback);

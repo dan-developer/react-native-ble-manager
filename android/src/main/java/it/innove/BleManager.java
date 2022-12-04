@@ -142,11 +142,7 @@ class BleManager extends ReactContextBaseJavaModule {
             forceLegacy = options.getBoolean("forceLegacy");
         }
 
-        if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
-            scanManager = new LollipopScanManager(reactContext, this);
-        } else {
-            scanManager = new LegacyScanManager(reactContext, this);
-        }
+        scanManager = new DanScanManager(reactContext, this);
 
         IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
