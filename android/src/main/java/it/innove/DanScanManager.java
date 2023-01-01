@@ -40,7 +40,9 @@ public class DanScanManager extends ScanManager {
     public void scan(ReadableArray serviceUUIDs, final int scanSeconds, ReadableMap options,  Callback callback) {
         // Scanning settings
         final ScanSettings settings = new ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .setScanMode(2)
+                .setMatchMode(1)
+                .setNumOfMatches(3)
                 .setReportDelay(0)
                 .setUseHardwareBatchingIfSupported(false)
                 .build();
